@@ -1,7 +1,6 @@
 // src/components/listings/ListingForm.jsx
 // Admin form to add or edit a property listing.
-// Categories come live from Firestore via useCategories().
-// Admins can open CategoriesManager inline without leaving the form.
+// Images are uploaded to Cloudinary via /api/upload (not Firebase Storage).
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,7 +8,6 @@ import {
   X, Upload, ImagePlus, Loader2, Save,
   ArrowLeft, Plus, CheckCircle, Settings,
 } from "lucide-react";
-
 
 import CategoriesManager from "./CategoriesManager";
 import { useListings } from "../../auth/ListingsProvider";
@@ -24,8 +22,32 @@ const T = {
 const TYPES    = ["residential", "commercial"];
 const STATUSES = ["available", "let", "sold", "off-market"];
 
-// ── Tiny form primitives ─────────────────────────────────────
+/* ─────────────────────────────────────
+   Cloudinary upload helper
+   Calls your /api/upload endpoint and returns the secure image URL.
+───────────────────────────────────── */
+async function uploadToCloudinary(file) {
+  const formData = new FormData();
+  formData.append("file", file);
 
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Upload failed (${res.status})`);
+  }
+
+  const data = await res.json();
+  if (!data.success || !data.imageUrl) throw new Error("No URL returned from upload");
+  return data.imageUrl;
+}
+
+/* ─────────────────────────────────────
+   Tiny form primitives
+───────────────────────────────────── */
 function Field({ label, required, error, hint, children }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -88,7 +110,6 @@ function TSelect({ value, onChange, options, placeholder, disabled, error }) {
   );
 }
 
-// A labelled card section to group related fields
 function Card({ title, hint, children }) {
   return (
     <div className="border p-5 sm:p-6 space-y-4" style={{ borderColor: T.border, background: T.white }}>
@@ -101,19 +122,48 @@ function Card({ title, hint, children }) {
   );
 }
 
-// ── Main export ──────────────────────────────────────────────
+/* ─────────────────────────────────────
+   Upload progress indicator
+───────────────────────────────────── */
+function UploadProgress({ current, total }) {
+  if (!total) return null;
+  const pct = Math.round((current / total) * 100);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex justify-between text-[11px] font-heading font-bold" style={{ color: T.muted }}>
+        <span>Uploading images…</span>
+        <span>{current}/{total}</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: T.border }}>
+        <motion.div
+          className="h-full rounded-full"
+          style={{ background: T.primary }}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.3 }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   MAIN EXPORT
+═══════════════════════════════════════ */
 export default function ListingForm({ editingListing, onDone, onCancel }) {
   const { createListing, updateListing } = useListings();
   const { categories } = useCategories();
   const isEditing = !!editingListing;
 
-  const [saving,   setSaving]   = useState(false);
-  const [saved,    setSaved]    = useState(false);
-  const [errors,   setErrors]   = useState({});
-  const [images,   setImages]   = useState([]); // { file, preview, isNew } or { url, path }
-  const [urlIn,    setUrlIn]    = useState("");
-  const [featIn,   setFeatIn]   = useState("");
-  const [showCats, setShowCats] = useState(false); // toggle CategoriesManager
+  const [saving,        setSaving]        = useState(false);
+  const [saved,         setSaved]         = useState(false);
+  const [errors,        setErrors]        = useState({});
+  const [images,        setImages]        = useState([]); // { file, preview, isNew } | { url, path }
+  const [urlIn,         setUrlIn]         = useState("");
+  const [featIn,        setFeatIn]        = useState("");
+  const [showCats,      setShowCats]      = useState(false);
+  const [uploadedCount, setUploadedCount] = useState(0);
+  const [totalToUpload, setTotalToUpload] = useState(0);
 
   const [form, setForm] = useState({
     name: "", type: "residential", category: "", location: "",
@@ -143,7 +193,6 @@ export default function ListingForm({ editingListing, onDone, onCancel }) {
 
   const up = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: "" })); };
 
-  // Handle file drop / file input
   const handleFiles = (files) => {
     const entries = Array.from(files)
       .filter(f => f.type.startsWith("image/"))
@@ -151,7 +200,6 @@ export default function ListingForm({ editingListing, onDone, onCancel }) {
     setImages(p => [...p, ...entries]);
   };
 
-  // Commit a pasted URL into the image list
   const commitUrl = () => {
     const u = urlIn.trim();
     if (u) { setImages(p => [...p, { url: u, path: null }]); setUrlIn(""); }
@@ -177,26 +225,60 @@ export default function ListingForm({ editingListing, onDone, onCancel }) {
     return e;
   };
 
+  /* ── Submit: upload new files to Cloudinary, then save listing ── */
   const handleSubmit = async () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
+
     setSaving(true);
+    setErrors({});
+
     try {
-      const newFiles  = images.filter(i => i.isNew).map(i => i.file);
-      const existUrls = images.filter(i => !i.isNew);
-      const payload   = { ...form, units: Number(form.units) };
-      if (isEditing) {
-        await updateListing(editingListing.id, { ...payload, images: existUrls }, newFiles);
-      } else {
-        await createListing(payload, [...existUrls.map(i => i.url), ...newFiles]);
+      // Separate new file uploads from already-resolved URLs
+      const newEntries  = images.filter(i => i.isNew && i.file);
+      const existingUrls = images
+        .filter(i => !i.isNew)
+        .map(i => i.url || (typeof i === "string" ? i : ""))
+        .filter(Boolean);
+
+      // Upload each new file to Cloudinary sequentially
+      // (parallel uploads can be swapped in by using Promise.all if preferred)
+      setTotalToUpload(newEntries.length);
+      setUploadedCount(0);
+
+      const uploadedUrls = [];
+      for (const entry of newEntries) {
+        const url = await uploadToCloudinary(entry.file);
+        uploadedUrls.push(url);
+        setUploadedCount(c => c + 1);
       }
+
+      // All image URLs to persist (existing first keeps cover image order)
+      const allImageUrls = [...existingUrls, ...uploadedUrls];
+
+      const payload = {
+        ...form,
+        units: Number(form.units),
+        images: allImageUrls,
+        // Convenience field — first image used as card cover
+        image: allImageUrls[0] || "",
+      };
+
+      if (isEditing) {
+        await updateListing(editingListing.id, payload);
+      } else {
+        await createListing(payload);
+      }
+
       setSaved(true);
       setTimeout(onDone, 900);
     } catch (err) {
-      console.error(err);
-      setErrors({ _global: "Failed to save. Please try again." });
+      console.error("Save error:", err);
+      setErrors({ _global: err.message || "Failed to save. Please try again." });
     } finally {
       setSaving(false);
+      setTotalToUpload(0);
+      setUploadedCount(0);
     }
   };
 
@@ -239,27 +321,48 @@ export default function ListingForm({ editingListing, onDone, onCancel }) {
             </div>
 
             <motion.button
-              whileHover={!saving && !saved ? { scale: 1.03, y: -1 } : {}} whileTap={{ scale: 0.97 }}
+              whileHover={!saving && !saved ? { scale: 1.03, y: -1 } : {}}
+              whileTap={{ scale: 0.97 }}
               onClick={handleSubmit} disabled={saving || saved}
               className="flex items-center gap-1.5 h-9 px-5 text-white font-heading font-bold text-[11px] tracking-[0.1em] uppercase border-none cursor-pointer transition-colors disabled:opacity-70"
               style={{ background: saved ? T.success : saving ? T.muted : T.primary }}
               onMouseEnter={e => { if (!saving && !saved) e.currentTarget.style.background = T.pHov; }}
               onMouseLeave={e => { if (!saving && !saved) e.currentTarget.style.background = T.primary; }}>
-              {saved ? <CheckCircle size={12} /> : saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+              {saved   ? <CheckCircle size={12} />
+               : saving ? <Loader2 size={12} className="animate-spin" />
+               :          <Save size={12} />}
               {saved ? "Saved!" : saving ? "Saving…" : isEditing ? "Save Changes" : "Publish"}
             </motion.button>
           </div>
+
+          {/* Upload progress bar — shown inside the sticky bar while uploading */}
+          <AnimatePresence>
+            {saving && totalToUpload > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="max-w-[860px] mx-auto px-4 sm:px-6 pb-3">
+                <UploadProgress current={uploadedCount} total={totalToUpload} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Form body */}
         <div className="relative max-w-[860px] mx-auto px-4 sm:px-6 py-8 space-y-5" style={{ zIndex: 1 }}>
 
-          {errors._global && (
-            <div className="px-4 py-3 border font-body text-[13px]"
-              style={{ background: "#FEF2F2", borderColor: "#FECACA", color: T.danger }}>
-              {errors._global}
-            </div>
-          )}
+          {/* Global error */}
+          <AnimatePresence>
+            {errors._global && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="px-4 py-3 border font-body text-[13px]"
+                style={{ background: "#FEF2F2", borderColor: "#FECACA", color: T.danger }}>
+                {errors._global}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* ── Property details ── */}
           <Card title="Property Details">
@@ -275,7 +378,6 @@ export default function ListingForm({ editingListing, onDone, onCancel }) {
                   placeholder="Select type" disabled={saving} />
               </Field>
 
-              {/* Category — with a Manage button to open CategoriesManager */}
               <Field label="Category" required error={errors.category}>
                 <div className="flex gap-2">
                   <div className="flex-1">
@@ -421,8 +523,15 @@ export default function ListingForm({ editingListing, onDone, onCancel }) {
                           <span className="absolute bottom-1 left-1 text-[8px] font-heading font-bold tracking-widest uppercase text-white px-1.5 py-0.5"
                             style={{ background: T.primary }}>Cover</span>
                         )}
+                        {/* Show "uploading" badge on new files while saving */}
+                        {img.isNew && saving && (
+                          <div className="absolute inset-0 flex items-center justify-center"
+                            style={{ background: "rgba(0,0,0,0.45)" }}>
+                            <Loader2 size={18} className="animate-spin text-white" />
+                          </div>
+                        )}
                         <button onClick={() => removeImg(i)} disabled={saving}
-                          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity border-none cursor-pointer"
+                          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity border-none cursor-pointer disabled:cursor-not-allowed"
                           style={{ background: "rgba(0,0,0,0.6)" }}>
                           <X size={10} />
                         </button>
@@ -445,13 +554,16 @@ export default function ListingForm({ editingListing, onDone, onCancel }) {
             </motion.button>
 
             <motion.button
-              whileHover={!saving && !saved ? { scale: 1.03, y: -2 } : {}} whileTap={{ scale: 0.97 }}
+              whileHover={!saving && !saved ? { scale: 1.03, y: -2 } : {}}
+              whileTap={{ scale: 0.97 }}
               onClick={handleSubmit} disabled={saving || saved}
               className="flex items-center gap-2 h-10 px-8 text-white font-heading font-bold text-xs tracking-[0.1em] uppercase border-none cursor-pointer transition-colors disabled:opacity-70"
               style={{ background: saved ? T.success : saving ? T.muted : T.primary }}
               onMouseEnter={e => { if (!saving && !saved) e.currentTarget.style.background = T.pHov; }}
               onMouseLeave={e => { if (!saving && !saved) e.currentTarget.style.background = T.primary; }}>
-              {saved ? <CheckCircle size={13} /> : saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+              {saved   ? <CheckCircle size={13} />
+               : saving ? <Loader2 size={13} className="animate-spin" />
+               :          <Save size={13} />}
               {saved ? "Saved!" : saving ? "Saving…" : isEditing ? "Save Changes" : "Publish Listing"}
             </motion.button>
           </div>
