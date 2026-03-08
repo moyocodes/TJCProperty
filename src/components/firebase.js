@@ -31,3 +31,6 @@ if (typeof window !== "undefined") {
 }
 
 export { db, doc, setDoc, auth, analytics, storage };
+
+
+

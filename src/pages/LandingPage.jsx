@@ -10,6 +10,9 @@ import Footer from "../components/Footer";
 import WhatsAppWidget from "../components/WhatsAppWidget";
 import Navbar from "../components/Navbar";
 import BlogSection from "../components/BlogSection";
+import { AuthProvider } from "../auth/AuthProvider";
+import { CategoriesProvider } from "../auth/CategoriesProvider";
+import { ListingsProvider } from "../auth/ListingsProvider";
 
 /* Inject Google Fonts once */
 if (!document.head.querySelector("[data-tjc-fonts]")) {
@@ -24,19 +27,23 @@ if (!document.head.querySelector("[data-tjc-fonts]")) {
 const LandingPage = () => {
   return (
     <div className="font-body bg-white overflow-x-hidden">
+      <AuthProvider>
+        <CategoriesProvider>
+          <ListingsProvider>
+            <Hero />
+            <Marquee />
+            <About />
+            <Properties />
+            <Services />
+            <WhyUs />
+            <Team />
+            <BlogSection />
+            <Contact />
 
-      <Hero />
-      <Marquee />
-      <About />
-      <Services />
-      <Properties />
-      <WhyUs />
-      <Team />
-      <BlogSection />
-      <Contact />
-
-
-      <WhatsAppWidget />
+            <WhatsAppWidget />
+          </ListingsProvider>
+        </CategoriesProvider>
+      </AuthProvider>
     </div>
   );
 };
