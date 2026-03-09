@@ -11,30 +11,51 @@ import {
   orderBy,
   serverTimestamp,
 } from "firebase/firestore";
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
 
 import { useAuth } from "./AuthProvider";
-import { db, storage } from "../components/firebase";
+import { db } from "../components/firebase";
 
 const ListingsContext = createContext(null);
+
+/* ─────────────────────────────────────
+   Normalise every Firestore doc so callers
+   always receive:
+     listing.images  → string[]   (Cloudinary URLs)
+     listing.image   → string     (cover = images[0])
+───────────────────────────────────── */
+function normaliseListing(docSnap) {
+  const d = { id: docSnap.id, ...docSnap.data() };
+
+  if (Array.isArray(d.images) && d.images.length > 0) {
+    // New format: could be string[] or legacy { url, path }[]
+    d.images = d.images
+      .map((i) => (typeof i === "string" ? i : i?.url ?? ""))
+      .filter(Boolean);
+  } else if (typeof d.image === "string" && d.image) {
+    // Legacy single-image doc — promote to array
+    d.images = [d.image];
+  } else {
+    d.images = [];
+  }
+
+  // Convenience cover always mirrors index 0
+  d.image = d.images[0] ?? "";
+
+  return d;
+}
 
 export function ListingsProvider({ children }) {
   const { user, isAdmin } = useAuth();
 
-  const [listings, setListings] = useState([]);
+  const [listings,  setListings]  = useState([]);
   const [enquiries, setEnquiries] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading,   setLoading]   = useState(true);
 
   /* ── Live listings (everyone sees) ── */
   useEffect(() => {
     const q = query(collection(db, "listings"), orderBy("createdAt", "desc"));
     return onSnapshot(q, (snap) => {
-      setListings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setListings(snap.docs.map(normaliseListing));
       setLoading(false);
     });
   }, []);
@@ -48,98 +69,68 @@ export function ListingsProvider({ children }) {
     });
   }, [isAdmin]);
 
-  /* ══════ LISTINGS CRUD (admin) ══════ */
-
-  const _uploadFile = (file) =>
-    new Promise((res, rej) => {
-      const path = `listings/${Date.now()}_${file.name}`;
-      const task = uploadBytesResumable(ref(storage, path), file);
-      task.on("state_changed", null, rej, async () =>
-        res({ url: await getDownloadURL(task.snapshot.ref), path }),
-      );
-    });
+  /* ══════ LISTINGS CRUD ══════
+     Images are uploaded to Cloudinary by ListingForm BEFORE calling these.
+     Both createListing and updateListing receive payload.images as string[].
+  ══════════════════════════════ */
 
   /* Create */
-  const createListing = async (data, imageFiles = []) => {
+  const createListing = async (data) => {
     // if (!isAdmin) throw new Error("Unauthorised");
-    const images = [];
-    for (const f of imageFiles) {
-      if (typeof f === "string") images.push({ url: f, path: null });
-      else images.push(await _uploadFile(f));
-    }
+    const images = Array.isArray(data.images) ? data.images : [];
     return addDoc(collection(db, "listings"), {
       ...data,
-      images,
-      image: images[0]?.url || "",
+      images,                  // string[] of Cloudinary URLs
+      image: images[0] ?? "",  // convenience cover field
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
   };
 
   /* Update */
-  const updateListing = async (id, data, newImageFiles = []) => {
+  const updateListing = async (id, data) => {
     // if (!isAdmin) throw new Error("Unauthorised");
-    const existing = listings.find((l) => l.id === id);
-    let images = existing?.images || [];
-    for (const f of newImageFiles) {
-      if (typeof f === "string") images.push({ url: f, path: null });
-      else images.push(await _uploadFile(f));
-    }
+    const images = Array.isArray(data.images) ? data.images : [];
     return updateDoc(doc(db, "listings", id), {
       ...data,
       images,
-      image: images[0]?.url || "",
+      image: images[0] ?? "",
       updatedAt: serverTimestamp(),
     });
   };
 
-  /* Delete */
+  /* Delete — no Storage cleanup needed (Cloudinary manages its own files) */
   const deleteListing = async (id) => {
     // if (!isAdmin) throw new Error("Unauthorised");
-    const listing = listings.find((l) => l.id === id);
-    for (const img of listing?.images || []) {
-      if (img?.path)
-        try {
-          await deleteObject(ref(storage, img.path));
-        } catch (_) {}
-    }
     return deleteDoc(doc(db, "listings", id));
   };
 
-  /* Remove single image */
+  /* Remove a single image by index and save */
   const removeListingImage = async (listingId, index) => {
     // if (!isAdmin) throw new Error("Unauthorised");
     const listing = listings.find((l) => l.id === listingId);
-    const img = listing?.images?.[index];
-    if (img?.path)
-      try {
-        await deleteObject(ref(storage, img.path));
-      } catch (_) {}
+    if (!listing) return;
     const images = listing.images.filter((_, i) => i !== index);
     return updateDoc(doc(db, "listings", listingId), {
       images,
-      image: images[0]?.url || "",
+      image: images[0] ?? "",
+      updatedAt: serverTimestamp(),
     });
   };
 
-  /* ══════ ENQUIRIES (logged-in user) ══════ */
+  /* ══════ ENQUIRIES ══════ */
 
-  const submitEnquiry = async ({
-    listingId,
-    listingName,
-    message,
-    contact,
-  }) => {
+  const submitEnquiry = async ({ listingId, listingName, message, contact }) => {
     if (!user) throw new Error("Login required");
     return addDoc(collection(db, "enquiries"), {
       listingId,
       listingName,
       message,
       contact,
-      userUid: user.uid,
+      userUid:   user.uid,
       userEmail: user.email,
-      userName: user.displayName || user.email,
-      status: "new", // new | read | closed
+      userName:  user.displayName || user.email,
+      status:    "new", // new | read | closed
       createdAt: serverTimestamp(),
     });
   };

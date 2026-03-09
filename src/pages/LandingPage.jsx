@@ -27,9 +27,7 @@ if (!document.head.querySelector("[data-tjc-fonts]")) {
 const LandingPage = () => {
   return (
     <div className="font-body bg-white overflow-x-hidden">
-      <AuthProvider>
-        <CategoriesProvider>
-          <ListingsProvider>
+   
             <Hero />
             <Marquee />
             <About />
@@ -41,9 +39,7 @@ const LandingPage = () => {
             <Contact />
 
             <WhatsAppWidget />
-          </ListingsProvider>
-        </CategoriesProvider>
-      </AuthProvider>
+          
     </div>
   );
 };

@@ -1,37 +1,46 @@
 // src/components/sections/Properties.jsx
-// Public listing grid + admin controls.
-// Clicking a card or "View Details" opens PropertyDetail (no router needed).
-// State: view = "grid" | "detail" | "form"
+// Public listing grid + admin controls (auth/enquiries now live in Navbar).
+// PropertyDetail and ListingForm render as fixed full-screen overlays (portals)
+// so they are never clipped by the section container.
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   Plus,
   Pencil,
   Trash2,
-  Inbox,
-  LogIn,
-  LogOut,
-  User,
   ExternalLink,
 } from "lucide-react";
 
 import PropertyDetail from "./ui/PropertyDetail";
 import EnquiryModal from "./ui/EnquiryModal";
-import EnquiriesPanel from "./ui/EnquiriesPanel";
-
-// ── Shared FadeUp (or import from ui/index.jsx) ──────────────
-
+import ListingForm from "./ui/ListingForm";
 import { useAuth } from "../auth/AuthProvider";
 import { useListings } from "../auth/ListingsProvider";
-import AuthModal from "../auth/AuthModal";
-import ListingForm from "./ui/ListingForm";
-import { useRef } from "react";
-import { useInView } from "framer-motion";
 
 const FILTERS = ["all", "residential", "commercial"];
-// paste these directly into Properties.jsx if ui/index.jsx isn't available
 
+/* ─────────────────────────────────────
+   Get cover image from a listing.
+   ListingsProvider guarantees:
+     listing.images = string[]
+     listing.image  = string (cover)
+   This helper handles any edge case.
+───────────────────────────────────── */
+function getCover(listing) {
+  if (Array.isArray(listing.images) && listing.images.length > 0) {
+    return listing.images[0];
+  }
+  if (typeof listing.image === "string" && listing.image) {
+    return listing.image;
+  }
+  return null;
+}
+
+/* ─────────────────────────────────────
+   Shared animation helpers
+───────────────────────────────────── */
 function FadeUp({ children, delay = 0 }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
@@ -56,28 +65,18 @@ function SectionTag({ children }) {
   );
 }
 
-function BtnPrimary({ children, onClick }) {
-  return (
-    <motion.button
-      whileHover={{ scale: 1.03, y: -2 }}
-      whileTap={{ scale: 0.97 }}
-      onClick={onClick}
-      className="bg-primary-600 hover:bg-primary-500 text-white font-heading font-bold text-xs tracking-[0.08em] uppercase px-8 py-3.5 border-none cursor-pointer transition-colors duration-300"
-    >
-      {children}
-    </motion.button>
-  );
-}
-// ── Delete confirm dialog ────────────────────────────────────
+/* ─────────────────────────────────────
+   Delete confirm dialog
+───────────────────────────────────── */
 function DeleteConfirm({ listing, onConfirm, onCancel }) {
   const [busy, setBusy] = useState(false);
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[160] flex items-center justify-center px-4"
-      style={{ background: "rgba(14,26,43,0.7)", backdropFilter: "blur(6px)" }}
+      style={{ background: "rgba(14,26,43,0.75)", backdropFilter: "blur(6px)" }}
       onClick={onCancel}
     >
       <motion.div
@@ -85,39 +84,24 @@ function DeleteConfirm({ listing, onConfirm, onCancel }) {
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95 }}
         transition={{ duration: 0.28 }}
-        className="w-full max-w-[360px] p-7"
-        style={{ background: "#F5F4F1", border: "1px solid #E5E0D8" }}
+        className="w-full max-w-[360px] p-7 bg-neutral-100 border border-neutral-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="w-10 h-10 flex items-center justify-center mb-4"
-          style={{ background: "#FEF2F2" }}
-        >
-          <Trash2 size={18} color="#B91C1C" />
+        <div className="w-10 h-10 flex items-center justify-center mb-4 bg-danger-50">
+          <Trash2 size={18} className="text-danger-700" />
         </div>
-        <h3
-          className="font-heading font-bold text-[16px]"
-          style={{ color: "#0E1A2B" }}
-        >
+        <h3 className="font-heading font-bold text-[16px] text-secondary-600">
           Delete Listing?
         </h3>
-        <p
-          className="font-body text-[13px] mt-1.5 leading-relaxed"
-          style={{ color: "#7A7A7A" }}
-        >
-          <strong style={{ color: "#0E1A2B" }}>{listing.name}</strong> and all
-          its images will be permanently removed.
+        <p className="font-body text-[13px] mt-1.5 leading-relaxed text-neutral-500">
+          <strong className="text-secondary-600">{listing.name}</strong> and
+          all its images will be permanently removed.
         </p>
         <div className="flex gap-2 mt-5">
           <button
             onClick={onCancel}
             disabled={busy}
-            className="flex-1 h-10 border font-heading font-bold text-[11px] uppercase cursor-pointer disabled:opacity-50"
-            style={{
-              borderColor: "#E5E0D8",
-              color: "#7A7A7A",
-              background: "#FFFFFF",
-            }}
+            className="flex-1 h-10 border border-neutral-200 font-heading font-bold text-[11px] uppercase cursor-pointer disabled:opacity-50 bg-white text-neutral-500 hover:text-secondary-600 transition-colors"
           >
             Cancel
           </button>
@@ -129,26 +113,24 @@ function DeleteConfirm({ listing, onConfirm, onCancel }) {
               await onConfirm();
             }}
             disabled={busy}
-            className="flex-1 h-10 font-heading font-bold text-[11px] uppercase text-white border-none cursor-pointer disabled:opacity-60"
-            style={{ background: busy ? "#9CA3AF" : "#B91C1C" }}
+            className="flex-1 h-10 font-heading font-bold text-[11px] uppercase text-white border-none cursor-pointer disabled:opacity-60 bg-danger-700"
           >
             {busy ? "Deleting…" : "Yes, Delete"}
           </motion.button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
-// ── Listing card ─────────────────────────────────────────────
-function ListingCard({
-  listing,
-  isAdmin,
-  onView,
-  onEnquire,
-  onEdit,
-  onDelete,
-}) {
+/* ─────────────────────────────────────
+   Listing card
+───────────────────────────────────── */
+function ListingCard({ listing, isAdmin, onView, onEnquire, onEdit, onDelete }) {
+  const cover = getCover(listing);
+  const photoCount = Array.isArray(listing.images) ? listing.images.length : (cover ? 1 : 0);
+
   return (
     <motion.div
       layout
@@ -159,62 +141,52 @@ function ListingCard({
       whileHover={{ y: -7, boxShadow: "0 20px 50px rgba(0,0,0,0.12)" }}
       className="bg-white overflow-hidden shadow-card group relative"
     >
-      {/* Admin edit/delete hover buttons */}
+      {/* Admin hover controls */}
       {isAdmin && (
-        <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(listing);
-            }}
-            className="w-7 h-7 flex items-center justify-center text-white border-none cursor-pointer"
-            style={{ background: "#0E1A2B" }}
+            onClick={(e) => { e.stopPropagation(); onEdit(listing); }}
+            className="w-7 h-7 flex items-center justify-center text-white border-none cursor-pointer bg-secondary-600"
+            title="Edit listing"
           >
             <Pencil size={12} />
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(listing);
-            }}
-            className="w-7 h-7 flex items-center justify-center text-white border-none cursor-pointer"
-            style={{ background: "#B91C1C" }}
+            onClick={(e) => { e.stopPropagation(); onDelete(listing); }}
+            className="w-7 h-7 flex items-center justify-center text-white border-none cursor-pointer bg-danger-700"
+            title="Delete listing"
           >
             <Trash2 size={12} />
           </motion.button>
         </div>
       )}
 
-      {/* Image */}
+      {/* Cover image */}
       <div
         className="relative h-[200px] overflow-hidden cursor-pointer"
         onClick={() => onView(listing)}
       >
-        {listing.image ? (
+        {cover ? (
           <motion.img
-            src={listing.image}
+            src={cover}
             alt={listing.name}
             whileHover={{ scale: 1.06 }}
             transition={{ duration: 0.5 }}
             className="w-full h-full object-cover block"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
         ) : (
-          <div
-            className="w-full h-full flex items-center justify-center"
-            style={{ background: "#FBEAE2" }}
-          >
-            <span
-              className="font-heading font-bold text-[12px]"
-              style={{ color: "#D97C5C" }}
-            >
+          <div className="w-full h-full flex items-center justify-center bg-primary-50">
+            <span className="font-heading font-bold text-[12px] text-primary-500">
               No Image
             </span>
           </div>
         )}
+
         <span
           className="absolute top-3 left-3 text-white px-3 py-1 font-heading font-bold text-[10px] tracking-[0.1em] uppercase"
           style={{
@@ -223,11 +195,16 @@ function ListingCard({
         >
           {listing.category || listing.type}
         </span>
+
+        {/* Photo count badge */}
+        {photoCount > 1 && (
+          <span className="absolute top-3 right-3 bg-black/50 text-white font-heading font-bold text-[9px] px-2 py-0.5 tracking-wide">
+            +{photoCount - 1} photos
+          </span>
+        )}
+
         {listing.status && listing.status !== "available" && (
-          <span
-            className="absolute bottom-3 right-3 text-white px-2 py-0.5 font-heading font-bold text-[9px] tracking-widest uppercase"
-            style={{ background: "#6B7280" }}
-          >
+          <span className="absolute bottom-3 right-3 text-white px-2 py-0.5 font-heading font-bold text-[9px] tracking-widest uppercase bg-neutral-500">
             {listing.status}
           </span>
         )}
@@ -235,20 +212,14 @@ function ListingCard({
 
       {/* Body */}
       <div className="p-5">
-        <div
-          className="font-heading font-bold text-[15px] mb-0.5"
-          style={{ color: "#0E1A2B" }}
-        >
+        <div className="font-heading font-bold text-[15px] mb-0.5 text-secondary-600">
           {listing.name}
         </div>
-        <div className="font-body text-xs mb-1" style={{ color: "#7A7A7A" }}>
+        <div className="font-body text-xs mb-1 text-neutral-500">
           📍 {listing.location}
         </div>
         {listing.priceLabel && (
-          <div
-            className="font-heading font-bold text-[14px] mb-3"
-            style={{ color: "#9F4325" }}
-          >
+          <div className="font-heading font-bold text-[14px] mb-3 text-primary-600">
             {listing.priceLabel}
           </div>
         )}
@@ -256,10 +227,7 @@ function ListingCard({
         {listing.features?.length > 0 && (
           <div className="flex gap-1.5 flex-wrap mb-4">
             {listing.features.slice(0, 3).map((f, i) => (
-              <span
-                key={i}
-                className="font-body text-neutral-500 bg-neutral-100 text-[11px] px-2.5 py-1"
-              >
+              <span key={i} className="font-body text-neutral-500 bg-neutral-100 text-[11px] px-2.5 py-1">
                 ✓ {f}
               </span>
             ))}
@@ -272,11 +240,8 @@ function ListingCard({
         )}
 
         <div className="flex justify-between items-center pt-3.5 border-t border-neutral-200 gap-2 flex-wrap">
-          <div className="font-body text-[12px]" style={{ color: "#7A7A7A" }}>
-            <strong
-              className="font-heading text-[15px]"
-              style={{ color: "#9F4325" }}
-            >
+          <div className="font-body text-[12px] text-neutral-500">
+            <strong className="font-heading text-[15px] text-primary-600">
               {listing.units}
             </strong>{" "}
             {listing.units === 1 ? "Unit" : "Units"}
@@ -285,16 +250,14 @@ function ListingCard({
             <motion.button
               whileHover={{ x: -2 }}
               onClick={() => onView(listing)}
-              className="bg-transparent border-none cursor-pointer font-heading font-bold text-[11px] tracking-[0.06em] uppercase flex items-center gap-1"
-              style={{ color: "#0E1A2B" }}
+              className="bg-transparent border-none cursor-pointer font-heading font-bold text-[11px] tracking-[0.06em] uppercase flex items-center gap-1 text-secondary-600 hover:text-primary-600 transition-colors"
             >
               <ExternalLink size={11} /> Details
             </motion.button>
             <motion.button
               whileHover={{ x: 3 }}
               onClick={() => onEnquire(listing)}
-              className="bg-transparent border-none cursor-pointer font-heading font-bold text-[11px] tracking-[0.06em] uppercase"
-              style={{ color: "#9F4325" }}
+              className="bg-transparent border-none cursor-pointer font-heading font-bold text-[11px] tracking-[0.06em] uppercase text-primary-600 hover:text-primary-500 transition-colors"
             >
               Enquire →
             </motion.button>
@@ -305,75 +268,41 @@ function ListingCard({
   );
 }
 
-// ── Main export ──────────────────────────────────────────────
+/* ═══════════════════════════════════════
+   MAIN EXPORT
+═══════════════════════════════════════ */
 export default function Properties() {
-  const { user, logout } = useAuth();
-  const isAdmin = true;
-  const { listings, loading, deleteListing, enquiries } = useListings();
+  const { user } = useAuth();
+  const isAdmin = true; // replace with real check
+  const { listings, loading, deleteListing } = useListings();
 
-  const [filter, setFilter] = useState("all");
-  const [view, setView] = useState("grid"); // "grid" | "detail" | "form"
-  const [selected, setSelected] = useState(null); // listing for detail / editing
-  const [authModal, setAuthModal] = useState(null); // null | "login"
-  const [enquiryFor, setEnquiryFor] = useState(null); // listing to enquire on
-  const [deleteFor, setDeleteFor] = useState(null); // listing to delete
-  const [showInbox, setShowInbox] = useState(false);
+  const [filter,     setFilter]     = useState("all");
+  const [detailFor,  setDetailFor]  = useState(null);
+  const [editFor,    setEditFor]    = useState(null);
+  const [showForm,   setShowForm]   = useState(false);
+  const [enquiryFor, setEnquiryFor] = useState(null);
+  const [deleteFor,  setDeleteFor]  = useState(null);
+  const [authNeeded, setAuthNeeded] = useState(false);
 
   const filtered =
     filter === "all" ? listings : listings.filter((l) => l.type === filter);
-  const newCount = enquiries.filter((e) => e.status === "new").length;
 
-  // ── Detail view ──
-  if (view === "detail" && selected) {
-    return (
-      <PropertyDetail
-        listing={selected}
-        onBack={() => {
-          setView("grid");
-          setSelected(null);
-        }}
-        onRequireAuth={() => {
-          setView("grid");
-          setAuthModal("login");
-        }}
-      />
-    );
-  }
+  const openNew  = () => { setEditFor(null); setShowForm(true); };
+  const openEdit = (l) => { setEditFor(l); setShowForm(true); };
+  const closeForm = () => { setShowForm(false); setEditFor(null); };
 
-  // ── Form view (admin only) ──
-  if (view === "form") {
-    return (
-      <AnimatePresence>
-        <ListingForm
-          editingListing={view === "form" && selected ? selected : null}
-          onDone={() => {
-            setView("grid");
-            setSelected(null);
-          }}
-          onCancel={() => {
-            setView("grid");
-            setSelected(null);
-          }}
-        />
-      </AnimatePresence>
-    );
-  }
-
-  // ── Grid view ──
   return (
     <>
       <section id="properties" className="py-24 px-[5%] bg-neutral-100">
         <div className="max-w-[1200px] mx-auto">
-          {/* Header */}
+
+          {/* ── Section header ── */}
           <div className="flex justify-between items-end mb-10 flex-wrap gap-6">
             <FadeUp>
               <SectionTag>Listings</SectionTag>
               <h2
                 className="font-heading text-secondary-600 leading-[1.2] mt-0"
-                style={{
-                  fontSize: "clamp(2rem, 3vw, 2.8rem)",
-                  fontWeight: 400,
-                }}
+                style={{ fontSize: "clamp(2rem, 3vw, 2.8rem)", fontWeight: 400 }}
               >
                 Available{" "}
                 <em className="not-italic text-primary-600">Properties</em>
@@ -400,129 +329,26 @@ export default function Properties() {
                   ))}
                 </div>
 
-                {/* Admin controls */}
+                {/* Admin: Add listing */}
                 {isAdmin && (
-                  <>
-                    <motion.button
-                      whileHover={{ scale: 1.04 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowInbox(true)}
-                      className="relative flex items-center gap-1.5 h-9 px-4 border font-heading font-bold text-[11px] uppercase cursor-pointer transition-colors"
-                      style={{
-                        borderColor: "#E5E0D8",
-                        color: "#0E1A2B",
-                        background: "#FFFFFF",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "#9F4325";
-                        e.currentTarget.style.color = "#9F4325";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "#E5E0D8";
-                        e.currentTarget.style.color = "#0E1A2B";
-                      }}
-                    >
-                      <Inbox size={13} /> Enquiries
-                      {newCount > 0 && (
-                        <span
-                          className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center text-white font-heading font-bold text-[9px]"
-                          style={{ background: "#9F4325" }}
-                        >
-                          {newCount}
-                        </span>
-                      )}
-                    </motion.button>
-
-                    <motion.button
-                      whileHover={{ scale: 1.04, y: -1 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        setSelected(null);
-                        setView("form");
-                      }}
-                      className="flex items-center gap-1.5 h-9 px-4 text-white font-heading font-bold text-[11px] uppercase border-none cursor-pointer transition-colors"
-                      style={{ background: "#9F4325" }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "#D97C5C")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "#9F4325")
-                      }
-                    >
-                      <Plus size={13} /> Add Listing
-                    </motion.button>
-                  </>
-                )}
-
-                {/* Auth pill */}
-                {user ? (
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className="flex items-center gap-1.5 h-9 px-3 border"
-                      style={{ borderColor: "#E5E0D8", background: "#FFFFFF" }}
-                    >
-                      <User size={12} style={{ color: "#9F4325" }} />
-                      <span
-                        className="font-heading font-bold text-[11px] max-w-[80px] truncate hidden sm:inline"
-                        style={{ color: "#0E1A2B" }}
-                      >
-                        {user.displayName || user.email?.split("@")[0]}
-                      </span>
-                      {isAdmin && (
-                        <span
-                          className="text-[8px] font-heading font-bold tracking-widest uppercase px-1.5 py-0.5 text-white"
-                          style={{ background: "#9F4325" }}
-                        >
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={logout}
-                      className="h-9 w-9 flex items-center justify-center border bg-white cursor-pointer"
-                      style={{ borderColor: "#E5E0D8" }}
-                      title="Sign out"
-                    >
-                      <LogOut size={13} style={{ color: "#7A7A7A" }} />
-                    </motion.button>
-                  </div>
-                ) : (
                   <motion.button
-                    whileHover={{ scale: 1.04 }}
+                    whileHover={{ scale: 1.04, y: -1 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setAuthModal("login")}
-                    className="flex items-center gap-1.5 h-9 px-4 border font-heading font-bold text-[11px] uppercase cursor-pointer transition-colors"
-                    style={{
-                      borderColor: "#E5E0D8",
-                      color: "#0E1A2B",
-                      background: "#FFFFFF",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#9F4325";
-                      e.currentTarget.style.color = "#9F4325";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#E5E0D8";
-                      e.currentTarget.style.color = "#0E1A2B";
-                    }}
+                    onClick={openNew}
+                    className="flex items-center gap-1.5 h-9 px-4 text-white font-heading font-bold text-[11px] uppercase border-none cursor-pointer bg-primary-600 hover:bg-primary-500 transition-colors"
                   >
-                    <LogIn size={13} /> Sign In
+                    <Plus size={13} /> Add Listing
                   </motion.button>
                 )}
               </div>
             </FadeUp>
           </div>
 
-          {/* Skeleton */}
+          {/* ── Loading skeleton ── */}
           {loading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="bg-white overflow-hidden shadow-card animate-pulse"
-                >
+                <div key={i} className="bg-white overflow-hidden shadow-card animate-pulse">
                   <div className="h-[200px] bg-neutral-200" />
                   <div className="p-5 space-y-3">
                     <div className="h-4 bg-neutral-200 w-3/4" />
@@ -533,27 +359,19 @@ export default function Properties() {
             </div>
           )}
 
-          {/* Empty state */}
+          {/* ── Empty state ── */}
           {!loading && filtered.length === 0 && (
             <div className="text-center py-20">
-              <p
-                className="font-heading font-bold text-lg"
-                style={{ color: "#0E1A2B" }}
-              >
+              <p className="font-heading font-bold text-lg text-secondary-600">
                 No listings yet
               </p>
-              <p
-                className="font-body text-sm mt-1"
-                style={{ color: "#7A7A7A" }}
-              >
-                {isAdmin
-                  ? "Click Add Listing to get started."
-                  : "Check back soon."}
+              <p className="font-body text-sm mt-1 text-neutral-500">
+                {isAdmin ? "Click Add Listing to get started." : "Check back soon."}
               </p>
             </div>
           )}
 
-          {/* Grid */}
+          {/* ── Grid ── */}
           {!loading && filtered.length > 0 && (
             <motion.div
               layout
@@ -565,17 +383,11 @@ export default function Properties() {
                     key={listing.id}
                     listing={listing}
                     isAdmin={isAdmin}
-                    onView={(l) => {
-                      setSelected(l);
-                      setView("detail");
-                    }}
+                    onView={setDetailFor}
                     onEnquire={(l) =>
-                      user ? setEnquiryFor(l) : setAuthModal("login")
+                      user ? setEnquiryFor(l) : setAuthNeeded(true)
                     }
-                    onEdit={(l) => {
-                      setSelected(l);
-                      setView("form");
-                    }}
+                    onEdit={openEdit}
                     onDelete={(l) => setDeleteFor(l)}
                   />
                 ))}
@@ -583,34 +395,67 @@ export default function Properties() {
             </motion.div>
           )}
 
+          {/* ── View full portfolio CTA ── */}
           <FadeUp delay={0.2}>
             <div className="text-center mt-12">
-              <BtnPrimary onClick={() => setAuthModal("login")}>
+              <motion.a
+                href="mailto:info@tjcproperties.com?subject=Full Portfolio Request"
+                whileHover={{ scale: 1.03, y: -2 }}
+                whileTap={{ scale: 0.97 }}
+                className="inline-block bg-primary-600 hover:bg-primary-500 text-white font-heading font-bold text-xs tracking-[0.08em] uppercase px-8 py-3.5 border-none cursor-pointer transition-colors duration-300 no-underline"
+              >
                 Request Full Portfolio →
-              </BtnPrimary>
+              </motion.a>
             </div>
           </FadeUp>
         </div>
       </section>
 
-      {/* ── Overlays ── */}
+      {/* ══════════════════════════════════════
+          Portals — rendered at document.body so
+          they are never clipped by the section
+      ══════════════════════════════════════ */}
+
+      {/* Property detail overlay */}
       <AnimatePresence>
-        {authModal && (
-          <AuthModal
-            defaultTab={authModal}
-            onClose={() => setAuthModal(null)}
+        {detailFor && (
+          <PropertyDetailPortal
+            listing={detailFor}
+            onBack={() => setDetailFor(null)}
+            onEnquire={(l) =>
+              user ? setEnquiryFor(l) : setAuthNeeded(true)
+            }
           />
         )}
+      </AnimatePresence>
+
+      {/* Listing form overlay */}
+      <AnimatePresence>
+        {showForm && (
+          <ListingFormPortal
+            editingListing={editFor}
+            onDone={closeForm}
+            onCancel={closeForm}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Enquiry modal */}
+      <AnimatePresence>
         {enquiryFor && (
           <EnquiryModal
             listing={enquiryFor}
             onClose={() => setEnquiryFor(null)}
             onRequireAuth={() => {
               setEnquiryFor(null);
-              setAuthModal("login");
+              setAuthNeeded(true);
             }}
           />
         )}
+      </AnimatePresence>
+
+      {/* Delete confirm */}
+      <AnimatePresence>
         {deleteFor && (
           <DeleteConfirm
             listing={deleteFor}
@@ -621,10 +466,68 @@ export default function Properties() {
             onCancel={() => setDeleteFor(null)}
           />
         )}
-        {showInbox && isAdmin && (
-          <EnquiriesPanel onClose={() => setShowInbox(false)} />
-        )}
       </AnimatePresence>
+
+      {/* Auth needed nudge — dispatches to Navbar's auth modal via custom event */}
+      {authNeeded && <AuthTrigger onDone={() => setAuthNeeded(false)} />}
     </>
   );
+}
+
+/* ─────────────────────────────────────
+   Portal wrappers — give PropertyDetail
+   and ListingForm a fixed full-screen
+   container at document.body level.
+───────────────────────────────────── */
+function PropertyDetailPortal({ listing, onBack, onEnquire }) {
+  return createPortal(
+    <motion.div
+      key="property-detail-portal"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      className="fixed inset-0 z-[100] overflow-y-auto bg-neutral-100"
+    >
+      <PropertyDetail
+        listing={listing}
+        onBack={onBack}
+        onEnquire={onEnquire}
+      />
+    </motion.div>,
+    document.body
+  );
+}
+
+function ListingFormPortal({ editingListing, onDone, onCancel }) {
+  return createPortal(
+    <motion.div
+      key="listing-form-portal"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      className="fixed inset-0 z-[100] overflow-y-auto"
+    >
+      <ListingForm
+        editingListing={editingListing}
+        onDone={onDone}
+        onCancel={onCancel}
+      />
+    </motion.div>,
+    document.body
+  );
+}
+
+/* ─────────────────────────────────────
+   AuthTrigger — fires a custom event so
+   Navbar can open its AuthModal without
+   prop-drilling through the whole tree.
+───────────────────────────────────── */
+function AuthTrigger({ onDone }) {
+  useState(() => {
+    window.dispatchEvent(new CustomEvent("tjc:openAuth", { detail: "login" }));
+    onDone();
+  });
+  return null;
 }

@@ -15,9 +15,9 @@ export default function About() {
           <div className="relative">
             <div className="w-full aspect-[4/5] overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=900&q=80"
+                src="tjc.jpeg"
                 alt="TJC Properties office"
-                className="w-full h-full object-cover"
+                className="w-full h-full  "
               />
               <div className="absolute inset-0 bg-gradient-to-t from-secondary-600/40 to-transparent" />
             </div>

@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useScrolled } from "./../hooks/useScrolled";
 import { LogoMark } from "./ui";
+import { useAuth } from "../auth/AuthProvider";
+import { useListings } from "../auth/ListingsProvider";
+import AuthModal from "../auth/AuthModal";
+import EnquiriesPanel from "./ui/EnquiriesPanel";
+import { LogIn, LogOut, User, Inbox, ChevronDown } from "lucide-react";
 
-
-const NAV_LINKS = ["about", "services", "properties", "team", "contact"];
+const NAV_LINKS = ["about", "services", "properties", "team", "blog", "contact"];
 
 const scrollTo = (id) =>
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -12,6 +16,21 @@ const scrollTo = (id) =>
 export default function Navbar() {
   const scrolled = useScrolled(50);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [authModal, setAuthModal] = useState(null);
+  const [showInbox, setShowInbox] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const { user, logout } = useAuth();
+  const { enquiries } = useListings();
+
+  // Listen for auth requests dispatched by child components (e.g. Properties)
+  useEffect(() => {
+    const handler = (e) => setAuthModal(e.detail || "login");
+    window.addEventListener("tjc:openAuth", handler);
+    return () => window.removeEventListener("tjc:openAuth", handler);
+  }, []);
+  const isAdmin = true; // replace with real check when ready
+  const newCount = enquiries?.filter((e) => e.status === "new").length ?? 0;
 
   return (
     <>
@@ -54,15 +73,98 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* CTA */}
-        <motion.button
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => scrollTo("contact")}
-          className="hidden md:block bg-primary-600 hover:bg-primary-500 text-white font-heading font-bold text-[11px] tracking-[0.1em] uppercase px-5 py-2.5 transition-colors duration-300 border-none cursor-pointer"
-        >
-          Enquire Now
-        </motion.button>
+        {/* Right side controls */}
+        <div className="hidden md:flex items-center gap-2">
+          {/* Admin: Enquiries inbox */}
+          {isAdmin && (
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowInbox(true)}
+              className="relative flex items-center gap-1.5 h-9 px-3 border border-white/20 font-heading font-bold text-[11px] uppercase cursor-pointer transition-colors bg-transparent text-white/80 hover:text-white hover:border-white/50"
+            >
+              <Inbox size={13} />
+              <span className="hidden lg:inline">Enquiries</span>
+              {newCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center text-white font-heading font-bold text-[9px] bg-primary-600 rounded-none">
+                  {newCount}
+                </span>
+              )}
+            </motion.button>
+          )}
+
+          {/* Auth pill */}
+          {user ? (
+            <div className="relative">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-1.5 h-9 px-3 border border-white/20 cursor-pointer bg-transparent text-white/80 hover:text-white hover:border-white/50 transition-colors"
+              >
+                <User size={12} />
+                <span className="font-heading font-semibold text-[11px] max-w-[80px] truncate">
+                  {user.displayName || user.email?.split("@")[0]}
+                </span>
+                {isAdmin && (
+                  <span className="text-[8px] font-heading font-bold tracking-widest uppercase px-1.5 py-0.5 text-white bg-primary-600">
+                    Admin
+                  </span>
+                )}
+                <ChevronDown size={10} />
+              </motion.button>
+
+              <AnimatePresence>
+                {userMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute right-0 top-full mt-1.5 w-44 bg-secondary-600 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.35)] z-50"
+                    onMouseLeave={() => setUserMenuOpen(false)}
+                  >
+                    <div className="px-4 py-2.5 border-b border-white/10">
+                      <p className="font-heading font-bold text-[11px] text-white/50 uppercase tracking-widest">
+                        Signed in as
+                      </p>
+                      <p className="font-heading font-bold text-[12px] text-white mt-0.5 truncate">
+                        {user.email}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setUserMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 font-heading font-bold text-[11px] uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors bg-transparent border-none cursor-pointer"
+                    >
+                      <LogOut size={12} /> Sign Out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setAuthModal("login")}
+              className="flex items-center gap-1.5 h-9 px-3 border border-white/20 font-heading font-bold text-[11px] uppercase cursor-pointer transition-colors bg-transparent text-white/80 hover:text-white hover:border-white/50"
+            >
+              <LogIn size={13} /> Sign In
+            </motion.button>
+          )}
+
+          {/* Enquire CTA */}
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => scrollTo("contact")}
+            className="bg-primary-600 hover:bg-primary-500 text-white font-heading font-bold text-[11px] tracking-[0.1em] uppercase px-5 py-2.5 transition-colors duration-300 border-none cursor-pointer"
+          >
+            Enquire Now
+          </motion.button>
+        </div>
 
         {/* Hamburger */}
         <button
@@ -95,7 +197,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.3 }}
-            className="fixed top-[72px] left-0 right-0 z-40 bg-secondary-700/98 backdrop-blur-md flex flex-col px-[5%] py-6 gap-5"
+            className="fixed top-[72px] left-0 right-0 z-40 bg-secondary-600/98 backdrop-blur-md flex flex-col px-[5%] py-6 gap-5"
           >
             {NAV_LINKS.map((id) => (
               <button
@@ -106,13 +208,62 @@ export default function Navbar() {
                 {id}
               </button>
             ))}
-            <button
-              onClick={() => { scrollTo("contact"); setMobileOpen(false); }}
-              className="bg-primary-600 text-white font-heading font-bold text-xs tracking-[0.1em] uppercase px-5 py-3 mt-2 border-none cursor-pointer text-left"
-            >
-              Enquire Now →
-            </button>
+
+            <div className="border-t border-white/10 pt-4 flex flex-col gap-3">
+              {isAdmin && (
+                <button
+                  onClick={() => { setShowInbox(true); setMobileOpen(false); }}
+                  className="relative flex items-center gap-2 text-white/80 font-heading font-semibold text-sm tracking-[0.1em] uppercase text-left bg-transparent border-none cursor-pointer"
+                >
+                  <Inbox size={14} /> Enquiries
+                  {newCount > 0 && (
+                    <span className="w-4 h-4 flex items-center justify-center text-white font-heading font-bold text-[9px] bg-primary-600">
+                      {newCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {user ? (
+                <button
+                  onClick={() => { logout(); setMobileOpen(false); }}
+                  className="flex items-center gap-2 text-white/80 font-heading font-semibold text-sm tracking-[0.1em] uppercase text-left bg-transparent border-none cursor-pointer"
+                >
+                  <LogOut size={14} /> Sign Out
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setAuthModal("login"); setMobileOpen(false); }}
+                  className="flex items-center gap-2 text-white/80 font-heading font-semibold text-sm tracking-[0.1em] uppercase text-left bg-transparent border-none cursor-pointer"
+                >
+                  <LogIn size={14} /> Sign In
+                </button>
+              )}
+
+              <button
+                onClick={() => { scrollTo("contact"); setMobileOpen(false); }}
+                className="bg-primary-600 text-white font-heading font-bold text-xs tracking-[0.1em] uppercase px-5 py-3 mt-1 border-none cursor-pointer text-left"
+              >
+                Enquire Now →
+              </button>
+            </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Overlays — mounted at navbar level so they're always above everything */}
+      <AnimatePresence>
+        {authModal && (
+          <AuthModal
+            defaultTab={authModal}
+            onClose={() => setAuthModal(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showInbox && isAdmin && (
+          <EnquiriesPanel onClose={() => setShowInbox(false)} />
         )}
       </AnimatePresence>
     </>
