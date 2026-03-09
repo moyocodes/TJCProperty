@@ -2,7 +2,8 @@
 // Shown at /admin when the user is not logged in.
 // Clean, minimal login form — no register, no public links.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogIn, Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
@@ -17,7 +18,14 @@ const inputCls = (focused, error) =>
   }`;
 
 export default function AdminLoginPage() {
-  const { login, authError, clearError } = useAuth();
+  const { user, isAdmin, login, authError, clearError } = useAuth();
+  const navigate = useNavigate();
+
+  // Watch for Firebase auth resolving — once user + isAdmin are confirmed, go to panel
+  useEffect(() => {
+    if (user && isAdmin) navigate("/dashboard", { replace: true });
+  }, [user, isAdmin, navigate]);
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [errs, setErrs] = useState({});
   const [show, setShow] = useState(false);
@@ -45,8 +53,8 @@ export default function AdminLoginPage() {
     setBusy(true);
     await login(form);
     setBusy(false);
-    // AuthProvider's onAuthStateChanged will trigger re-render —
-    // App.jsx will swap AdminLoginPage for AdminPanel automatically.
+    // Navigation is handled by the useEffect above once user + isAdmin resolve.
+    // If login failed, authError is set by AuthProvider and shown in the form.
   };
 
   return (

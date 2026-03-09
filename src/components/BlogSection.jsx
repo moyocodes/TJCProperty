@@ -349,8 +349,8 @@ function EmptyState({ isAdmin, onCreate }) {
 ══════════════════════════════════ */
 export default function BlogSection() {
   const { blogs, loading, createBlog, updateBlog, deleteBlog } = useBlog();
-  // const { isAdmin } = useAuth();
-  const isAdmin = true;
+  const { isAdmin } = useAuth();
+  
   console.log("Blogs:", isAdmin, blogs);
   const [editingBlog, setEditingBlog] = useState(null);
   const [isCreating, setIsCreating] = useState(false);

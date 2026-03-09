@@ -25,6 +25,7 @@ function App() {
             <Route path="properties/:id" element={<PropertyDetailPage />} />
             <Route path="*" element={<div className="p-20 text-center">404 - Page Not Found</div>} />
             <Route path="admin" element={<AdminLoginPage />} />
+            <Route path="dashboard" element={<AdminPanel />} />
           </Route>
         </Routes>
       </ErrorBoundary>

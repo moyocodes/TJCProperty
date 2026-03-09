@@ -7,7 +7,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useScrolled } from "./../hooks/useScrolled";
 import { LogoMark } from "./ui";
 
-const NAV_LINKS = ["about", "services", "properties", "team", "blog", "contact"];
+const NAV_LINKS = [
+  "about",
+  "services",
+  "properties",
+  "team",
+  "blog",
+  "contact",
+];
 
 const scrollTo = (id) =>
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -21,11 +28,7 @@ export default function Navbar() {
       initial={{ y: -80 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-[5%] py-[1.1rem] transition-all duration-400 ${
-        scrolled
-          ? "bg-secondary-600/95 backdrop-blur-md shadow-[0_2px_24px_rgba(0,0,0,0.3)]"
-          : "bg-transparent"
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-[5%] py-[1.1rem] transition-all duration-400 ${"bg-secondary-600/95 backdrop-blur-md shadow-[0_2px_24px_rgba(0,0,0,0.3)]"}`}
     >
       {/* Logo */}
       <button
@@ -78,9 +81,11 @@ export default function Navbar() {
             key={i}
             animate={
               mobileOpen
-                ? i === 0 ? { rotate: 45, y: 7 }
-                : i === 1 ? { opacity: 0 }
-                : { rotate: -45, y: -7 }
+                ? i === 0
+                  ? { rotate: 45, y: 7 }
+                  : i === 1
+                    ? { opacity: 0 }
+                    : { rotate: -45, y: -7 }
                 : { rotate: 0, y: 0, opacity: 1 }
             }
             className="block w-6 h-[2px] bg-white"
@@ -101,14 +106,20 @@ export default function Navbar() {
             {NAV_LINKS.map((id) => (
               <button
                 key={id}
-                onClick={() => { scrollTo(id); setMobileOpen(false); }}
+                onClick={() => {
+                  scrollTo(id);
+                  setMobileOpen(false);
+                }}
                 className="text-white/80 font-heading font-semibold text-sm tracking-[0.1em] uppercase text-left bg-transparent border-none cursor-pointer"
               >
                 {id}
               </button>
             ))}
             <button
-              onClick={() => { scrollTo("contact"); setMobileOpen(false); }}
+              onClick={() => {
+                scrollTo("contact");
+                setMobileOpen(false);
+              }}
               className="bg-primary-600 text-white font-heading font-bold text-xs tracking-[0.1em] uppercase px-5 py-3 mt-1 border-none cursor-pointer text-left"
             >
               Enquire Now →

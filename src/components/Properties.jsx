@@ -184,8 +184,8 @@ function ListingCard({ listing, isAdmin, onView, onEnquire, onEdit, onDelete }) 
 ═══════════════════════════════════════ */
 export default function Properties() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isAdmin = true; // replace with real check
+  const { isAdmin,user } = useAuth();
+
   const { listings, loading, deleteListing } = useListings();
 
   const [filter,     setFilter]     = useState("all");
