@@ -5,6 +5,10 @@ import LandingPage from "./pages/LandingPage";
 import BlogSection from "./components/BlogSection";
 import BlogDetail from "./components/BlogDetail";
 
+import PropertyDetailPage from "./components/PropertyDetailPage";
+import ListingsPage from "./components/ListingsPage";
+
+
 function App() {
   return (
     <BrowserRouter>
@@ -14,6 +18,8 @@ function App() {
             <Route index element={<LandingPage />} />
             <Route path="blog" element={<BlogSection />} />
             <Route path="blog/:id" element={<BlogDetail />} />
+            <Route path="properties" element={<ListingsPage />} />
+            <Route path="properties/:id" element={<PropertyDetailPage />} />
           </Route>
         </Routes>
       </ErrorBoundary>
