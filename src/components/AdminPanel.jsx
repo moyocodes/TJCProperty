@@ -444,7 +444,7 @@ export default function AdminPanel({ onBack }) {
   ];
 
   return (
-    <section className="min-h-screen bg-neutral-100 py-20">
+    <section className="min-h-screen bg-neutral-100 py-28">
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       className="min-h-screen bg-neutral-100">

@@ -10,6 +10,7 @@ import ListingsPage from "./components/ListingsPage";
 import AdminPanel from "./components/AdminPanel";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import BlogPage from "./pages/BlogPage";
 
 function App() {
   return (
@@ -19,7 +20,7 @@ function App() {
           <Route path="/" element={<Root />}>
             <Route index element={<LandingPage />} />
 
-            <Route path="blog" element={<BlogSection />} />
+            <Route path="blog" element={<BlogPage />} />
             <Route path="blog/:id" element={<BlogDetail />} />
             <Route path="properties" element={<ListingsPage />} />
             <Route path="properties/:id" element={<PropertyDetailPage />} />
