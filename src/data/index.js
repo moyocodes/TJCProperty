@@ -51,17 +51,17 @@ export const SERVICES = [
   {
     n: "01", icon: "🏷️", name: "Property Sales",
     desc: "We connect buyers with quality properties and guide every step — from valuation to final handover with full transparency.",
-    img: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80",
+    img: "/kdu.jpg",
   },
   {
     n: "02", icon: "🔑", name: "Lettings",
     desc: "Full rental management: listings, agreements, tenant vetting, and ongoing property oversight for landlords.",
-    img: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=800&q=80",
+    img: "/letting.jpg",
   },
   {
     n: "03", icon: "🏗️", name: "Project Management",
     desc: "In-house architect and builder for construction and renovation projects — on time and within budget.",
-    img: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80",
+    img: "/proj.jpg",
   },
 ];
 
