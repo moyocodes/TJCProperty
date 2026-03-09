@@ -89,7 +89,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout     = () => signOut(auth);
+ const logout = async () => {
+  await signOut(auth);
+};
   const clearError = () => setAuthError("");
 
   return (

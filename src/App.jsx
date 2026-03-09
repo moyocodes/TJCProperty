@@ -9,7 +9,7 @@ import PropertyDetailPage from "./components/PropertyDetailPage";
 import ListingsPage from "./components/ListingsPage";
 import AdminPanel from "./components/AdminPanel";
 import AdminLoginPage from "./pages/AdminLoginPage";
-
+import ProtectedRoute from "./auth/ProtectedRoute";
 
 function App() {
   return (
@@ -23,9 +23,21 @@ function App() {
             <Route path="blog/:id" element={<BlogDetail />} />
             <Route path="properties" element={<ListingsPage />} />
             <Route path="properties/:id" element={<PropertyDetailPage />} />
-            <Route path="*" element={<div className="p-20 text-center">404 - Page Not Found</div>} />
+            <Route
+              path="*"
+              element={
+                <div className="p-20 text-center">404 - Page Not Found</div>
+              }
+            />
             <Route path="admin" element={<AdminLoginPage />} />
-            <Route path="dashboard" element={<AdminPanel />} />
+            <Route
+              path="dashboard"
+              element={
+                <ProtectedRoute>
+                  <AdminPanel />
+                </ProtectedRoute>
+              }
+            />
           </Route>
         </Routes>
       </ErrorBoundary>

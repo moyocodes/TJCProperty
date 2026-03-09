@@ -283,7 +283,7 @@ function BlogCard({ blog, isAdmin, onEdit, onDelete }) {
                 (e.currentTarget.style.background = T.primary)
               }
             >
-              Read Article
+              Read 
               <ArrowRight size={11} />
             </motion.a>
           </div>

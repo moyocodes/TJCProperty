@@ -13,6 +13,8 @@ import BlogSection from "../components/BlogSection";
 import { AuthProvider } from "../auth/AuthProvider";
 import { CategoriesProvider } from "../auth/CategoriesProvider";
 import { ListingsProvider } from "../auth/ListingsProvider";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 /* Inject Google Fonts once */
 if (!document.head.querySelector("[data-tjc-fonts]")) {
@@ -25,21 +27,33 @@ if (!document.head.querySelector("[data-tjc-fonts]")) {
 }
 
 const LandingPage = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.scrollTo) {
+      const el = document.getElementById(location.state.scrollTo);
+
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    }
+  }, [location]);
+
   return (
     <div className="font-body bg-white overflow-x-hidden">
-   
-            <Hero />
-            <Marquee />
-            <About />
-            <Properties />
-            <Services />
-            <WhyUs />
-            <Team />
-            <BlogSection />
-            <Contact />
+      <Hero />
+      <Marquee />
+      <About />
+      <Properties />
+      <Services />
+      <WhyUs />
+      <Team />
+      <BlogSection />
+      <Contact />
 
-            <WhatsAppWidget />
-          
+      <WhatsAppWidget />
     </div>
   );
 };

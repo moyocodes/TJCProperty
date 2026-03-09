@@ -462,10 +462,7 @@ export default function AdminPanel({ onBack }) {
               </motion.button>
             )}
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 flex items-center justify-center text-white font-heading font-extrabold text-[11px] bg-primary-600"
-                style={{ clipPath: "polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)" }}>
-                TJC
-              </div>
+              
               <div>
                 <h1 className="font-heading font-bold text-[15px] text-secondary-600">Admin Panel</h1>
                 <p className="font-body text-[11px] text-neutral-400">TJC Properties management</p>
