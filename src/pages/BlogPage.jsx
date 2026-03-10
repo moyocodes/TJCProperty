@@ -186,96 +186,6 @@ function BlogCard({ blog, isAdmin, onEdit, onDelete, navigate }) {
 }
 
 /* ── Category manager modal ──────────────────────────────── */
-function CategoriesManager({ categories, onClose }) {
-  const [newCat, setNewCat] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const addCat = async () => {
-    if (!newCat.trim()) return;
-    setSaving(true);
-    await addDoc(collection(db, "blogCategories"), {
-      name: newCat.trim(),
-      createdAt: serverTimestamp(),
-    });
-    setNewCat("");
-    setSaving(false);
-  };
-
-  const delCat = async (id) => {
-    await deleteDoc(doc(db, "blogCategories", id));
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center px-4"
-      style={{ background: "rgba(14,26,43,0.75)", backdropFilter: "blur(6px)" }}
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.96, y: 14 }}
-        animate={{ scale: 1, y: 0 }}
-        className="w-full max-w-[400px] bg-neutral-100 border border-neutral-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 bg-white">
-          <p className="font-heading font-bold text-[13px] text-secondary-600">
-            Manage Blog Categories
-          </p>
-          <button
-            onClick={onClose}
-            className="bg-transparent border-none cursor-pointer text-neutral-400 hover:text-secondary-600"
-          >
-            <X size={15} />
-          </button>
-        </div>
-        <div className="p-5 space-y-3">
-          <div className="flex gap-2">
-            <input
-              value={newCat}
-              onChange={(e) => setNewCat(e.target.value)}
-              placeholder="New category name…"
-              onKeyDown={(e) => e.key === "Enter" && addCat()}
-              className="flex-1 bg-white border border-neutral-200 focus:border-primary-600 outline-none px-3 py-2 font-body text-[13px] text-secondary-600 transition-colors"
-            />
-            <button
-              onClick={addCat}
-              disabled={saving || !newCat.trim()}
-              className="px-4 h-[38px] bg-primary-600 hover:bg-primary-500 text-white font-heading font-bold text-[11px] uppercase border-none cursor-pointer disabled:opacity-50 transition-colors"
-            >
-              Add
-            </button>
-          </div>
-          <div className="space-y-1.5 max-h-56 overflow-y-auto">
-            {categories.length === 0 && (
-              <p className="font-body text-[12px] text-neutral-400 text-center py-4">
-                No custom categories yet.
-              </p>
-            )}
-            {categories.map((cat) => (
-              <div
-                key={cat.id}
-                className="flex items-center justify-between px-3 py-2 bg-white border border-neutral-200"
-              >
-                <span className="font-heading font-semibold text-[12px] text-secondary-600">
-                  {cat.name}
-                </span>
-                <button
-                  onClick={() => delCat(cat.id)}
-                  className="text-neutral-400 hover:text-red-600 bg-transparent border-none cursor-pointer transition-colors"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
 
 /* ══════════════════════════════════════════════════════════
    MAIN EXPORT — BlogPage
@@ -292,7 +202,6 @@ export default function BlogPage() {
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
   const [mobileFilter, setMobileFilter] = useState(false);
-  const [showCatMgr, setShowCatMgr] = useState(false);
 
   // Firestore categories
   const [dbCategories, setDbCategories] = useState([]);
@@ -400,11 +309,8 @@ export default function BlogPage() {
                 Properties
               </div>
               <h1
-                className="font-heading text-white leading-[1.15]"
-                style={{
-                  fontSize: "clamp(2.2rem, 4vw, 3.4rem)",
-                  fontWeight: 400,
-                }}
+                className="font-heading text-white leading-[1.15] text-3xl"
+               
               >
                 Property{" "}
                 <em className="not-italic text-primary-400 font-semibold">
@@ -412,10 +318,7 @@ export default function BlogPage() {
                 </em>
                 <br className="hidden md:block" /> & Market Guides
               </h1>
-              <p className="font-body text-white/50 text-[15px] mt-3 max-w-[520px] leading-relaxed">
-                Expert articles on Ibadan's property market, investment
-                strategies, and real estate advice from the TJC team.
-              </p>
+             
             </div>
 
             {/* Stats + admin CTA */}
@@ -431,17 +334,7 @@ export default function BlogPage() {
                   Articles
                 </div>
               </div>
-              <div className="text-center">
-                <div
-                  className="font-heading font-bold text-white leading-none"
-                  style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)" }}
-                >
-                  {allCategories.length}
-                </div>
-                <div className="font-body text-white/40 text-[11px] mt-1">
-                  Categories
-                </div>
-              </div>
+            
               {isAdmin && (
                 <div className="flex gap-2">
                   <motion.button
@@ -451,14 +344,6 @@ export default function BlogPage() {
                     className="flex items-center gap-1.5 h-9 px-4 text-white font-heading font-bold text-[11px] uppercase border border-white/25 hover:border-white/60 bg-transparent cursor-pointer transition-colors"
                   >
                     <Plus size={13} /> New Article
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.04, y: -1 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => setShowCatMgr(true)}
-                    className="flex items-center gap-1.5 h-9 px-4 text-white/70 font-heading font-bold text-[11px] uppercase border border-white/15 hover:border-white/40 bg-transparent cursor-pointer transition-colors"
-                  >
-                    <SlidersHorizontal size={13} /> Categories
                   </motion.button>
                 </div>
               )}
@@ -909,16 +794,6 @@ export default function BlogPage() {
           </>
         )}
       </div>
-
-      {/* Category manager modal */}
-      <AnimatePresence>
-        {showCatMgr && (
-          <CategoriesManager
-            categories={dbCategories}
-            onClose={() => setShowCatMgr(false)}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }

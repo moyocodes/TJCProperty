@@ -192,20 +192,7 @@ function ImageUploadPanel({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-neutral-200" />
-        <span className="font-heading font-bold text-[10px] tracking-widest uppercase text-neutral-400">
-          or paste URL
-        </span>
-        <div className="flex-1 h-px bg-neutral-200" />
-      </div>
-
-      <TInput
-        value={urlImage}
-        onChange={(e) => onUrlChange(e.target.value)}
-        placeholder="https://images.unsplash.com/…"
-        disabled={disabled}
-      />
+    
 
       {images.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-2">

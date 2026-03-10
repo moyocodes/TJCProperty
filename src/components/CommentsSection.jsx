@@ -25,6 +25,7 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
   deleteDoc,
   updateDoc,
   doc,
@@ -41,11 +42,13 @@ function timeAgo(ts) {
   if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
   if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
   if (secs < 604800) return `${Math.floor(secs / 86400)}d ago`;
-  return ts.toDate().toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  return ts
+    .toDate()
+    .toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
 }
 
 function avatar(name = "") {
@@ -475,16 +478,28 @@ export default function CommentsSection({ blogId }) {
 
   useEffect(() => {
     if (!blogId) return;
+    // Admins see all comments; public only sees approved ones.
+    // Separate constraints avoid Firestore permission-denied for non-admins.
+    const constraints = isAdmin
+      ? [orderBy("createdAt", "asc")]
+      : [where("approved", "==", true), orderBy("createdAt", "asc")];
     const q = query(
       collection(db, "blogs", blogId, "comments"),
-      orderBy("createdAt", "asc"),
+      ...constraints,
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setComments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setComments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setLoading(false);
+      },
+      (err) => {
+        console.warn("Comments read error:", err.code);
+        setLoading(false);
+      },
+    );
     return unsub;
-  }, [blogId]);
+  }, [blogId, isAdmin]);
 
   // Public sees only approved; admin sees all
   const visible = isAdmin ? comments : comments.filter((c) => c.approved);

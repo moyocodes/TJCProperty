@@ -8,11 +8,11 @@ const FOOTER_COLS = [
   {
     title: "Quick Links",
     links: [
-      { label: "About Us",   action: () => scrollTo("about") },
-      { label: "Services",   action: () => scrollTo("services") },
+      { label: "About Us", action: () => scrollTo("about") },
+      { label: "Services", action: () => scrollTo("services") },
       { label: "Properties", action: () => scrollTo("properties") },
-      { label: "Our Team",   action: () => scrollTo("team") },
-      { label: "Contact",    action: () => scrollTo("contact") },
+      { label: "Our Team", action: () => scrollTo("team") },
+      { label: "Contact", action: () => scrollTo("contact") },
     ],
   },
   {
@@ -37,20 +37,15 @@ export default function Footer() {
   return (
     <footer className="bg-[#060d17] pt-16 pb-8 px-[5%]">
       <div className="max-w-[1200px] mx-auto">
-
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr] gap-10 mb-12">
-
           {/* Brand */}
           <div>
             <button
               onClick={() => scrollTo("hero")}
               className="flex items-center gap-2.5 mb-4 bg-transparent border-none cursor-pointer"
             >
-              <LogoMark size={36} />
-              <span className="text-white font-heading font-bold text-[13px]">
-                TJC Properties
-              </span>
+              <img src="/public/tjlogobg.png" className="h-24" />
             </button>
             <p className="font-body text-white/35 text-[13px] leading-relaxed max-w-[240px]">
               Your trusted partner for residential and commercial real estate in
