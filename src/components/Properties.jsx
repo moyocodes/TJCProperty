@@ -192,7 +192,7 @@ function FeaturedSpotlight({ featured, all, onView, navigate }) {
 
   return (
     <FadeUp>
-      <div className="mb-14">
+      <div className="mb-8">
         {/* Label */}
         <div className="inline-flex items-center gap-2 text-[11px] font-heading font-bold tracking-[0.18em] uppercase mb-5 text-amber-500">
           <Star size={11} className="fill-amber-400" />
@@ -358,7 +358,7 @@ export default function Properties() {
 
   return (
     <>
-      <section id="properties" className="py-24 px-[5%] bg-neutral-100">
+      <section id="properties" className="py-20 px-[5%] bg-neutral-100">
         <div className="max-w-[1200px] mx-auto">
 
           {/* ── Featured spotlight ── */}
@@ -374,7 +374,7 @@ export default function Properties() {
         
 
           {/* CTA row */}
-          <FadeUp delay={0.2}>
+          {/* <FadeUp delay={0.2}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-12">
               <motion.button
                 whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
@@ -383,7 +383,7 @@ export default function Properties() {
                 <ArrowRight size={13} /> Browse All Properties
               </motion.button>
             </div>
-          </FadeUp>
+          </FadeUp> */}
         </div>
       </section>
 
