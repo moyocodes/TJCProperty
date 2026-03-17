@@ -1,19 +1,15 @@
 // src/components/sections/Properties.jsx
 // Home-page listing preview grid.
-// FeaturedProperties spotlight renders above the main grid.
 
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useInView } from "framer-motion";
-import { Plus, Pencil, Trash2, ExternalLink, ArrowRight, Star, MapPin, Tag } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowRight, Star, MapPin, Tag } from "lucide-react";
 
-import EnquiryModal from "./ui/EnquiryModal";
-import ListingForm from "./ui/ListingForm";
-import { useAuth } from "../auth/AuthProvider";
+import ListingForm   from "./ui/ListingForm";
+import { useAuth }     from "../auth/AuthProvider";
 import { useListings } from "../auth/ListingsProvider";
-
-const FILTERS = ["all", "residential", "commercial"];
 
 function getCover(listing) {
   if (Array.isArray(listing.images) && listing.images.length > 0) return listing.images[0];
@@ -81,7 +77,7 @@ function DeleteConfirm({ listing, onConfirm, onCancel }) {
 }
 
 /* ─── Featured: big hero card ─── */
-function FeaturedHeroCard({ listing, onClick }) {
+function FeaturedHeroCard({ listing, onClick, isAdmin, onEdit, onDelete }) {
   const cover = getCover(listing);
   return (
     <motion.div
@@ -99,8 +95,20 @@ function FeaturedHeroCard({ listing, onClick }) {
         </div>
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-secondary-600/95 via-secondary-600/40 to-transparent" />
-
-      {/* Badges */}
+      {isAdmin && (
+        <div className="absolute top-3 right-3 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
+            onClick={e => { e.stopPropagation(); onEdit(listing); }}
+            className="w-7 h-7 flex items-center justify-center text-white border-none cursor-pointer bg-secondary-600">
+            <Pencil size={12} />
+          </motion.button>
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
+            onClick={e => { e.stopPropagation(); onDelete(listing); }}
+            className="w-7 h-7 flex items-center justify-center text-white border-none cursor-pointer bg-red-700">
+            <Trash2 size={12} />
+          </motion.button>
+        </div>
+      )}
       <div className="absolute top-4 left-4 flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-400">
         <Star size={10} className="text-white fill-white" />
         <span className="font-heading font-bold text-[9px] tracking-[0.2em] uppercase text-white">Featured</span>
@@ -109,8 +117,6 @@ function FeaturedHeroCard({ listing, onClick }) {
         style={{ background: listing.type === "residential" ? "#9F4325" : "#0E1A2B" }}>
         {listing.category || listing.type}
       </div>
-
-      {/* Content */}
       <div className="absolute bottom-0 left-0 right-0 px-6 pb-7 pt-12 flex items-end justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-1.5 mb-1.5">
@@ -136,7 +142,7 @@ function FeaturedHeroCard({ listing, onClick }) {
 }
 
 /* ─── Featured: compact side card ─── */
-function FeaturedSideCard({ listing, onClick }) {
+function FeaturedSideCard({ listing, onClick, isAdmin, onEdit, onDelete }) {
   const cover = getCover(listing);
   return (
     <motion.div
@@ -180,35 +186,39 @@ function FeaturedSideCard({ listing, onClick }) {
           </span>
         </div>
       </div>
+      {isAdmin && (
+        <div className="absolute top-1.5 right-1.5 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
+            onClick={e => { e.stopPropagation(); onEdit(listing); }}
+            className="w-6 h-6 flex items-center justify-center text-white border-none cursor-pointer bg-secondary-600">
+            <Pencil size={10} />
+          </motion.button>
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
+            onClick={e => { e.stopPropagation(); onDelete(listing); }}
+            className="w-6 h-6 flex items-center justify-center text-white border-none cursor-pointer bg-red-700">
+            <Trash2 size={10} />
+          </motion.button>
+        </div>
+      )}
     </motion.div>
   );
 }
 
 /* ─── Featured spotlight section ─── */
-function FeaturedSpotlight({ featured, all, onView, navigate }) {
+function FeaturedSpotlight({ featured, all, onView, navigate, isAdmin, onEdit, onDelete }) {
   if (featured.length === 0) return null;
   const [hero, ...rest] = featured;
   const side = rest.slice(0, 2);
-
   return (
     <FadeUp>
       <div className="mb-8">
-        {/* Label */}
-        <div className="inline-flex items-center gap-2 text-[11px] font-heading font-bold tracking-[0.18em] uppercase mb-5 text-amber-500">
-          <Star size={11} className="fill-amber-400" />
-          Featured Listings
-        </div>
-
-        {/* Layout: hero left spanning 2 cols, side cards + CTA right */}
+     
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
-          <FeaturedHeroCard listing={hero} onClick={onView} />
-
+          <FeaturedHeroCard listing={hero} onClick={onView} isAdmin={isAdmin} onEdit={onEdit} onDelete={onDelete} />
           <div className="flex flex-col gap-4">
             {side.map(l => (
-              <FeaturedSideCard key={l.id} listing={l} onClick={onView} />
+              <FeaturedSideCard key={l.id} listing={l} onClick={onView} isAdmin={isAdmin} onEdit={onEdit} onDelete={onDelete} />
             ))}
-
-            {/* CTA block */}
             <motion.div
               whileHover={{ y: -3 }} onClick={() => navigate("/properties")}
               className="flex-1 flex flex-col items-center justify-center text-center px-6 py-7 bg-secondary-600 cursor-pointer group min-h-[120px]">
@@ -230,136 +240,56 @@ function FeaturedSpotlight({ featured, all, onView, navigate }) {
   );
 }
 
-/* ─── Regular listing card ─── */
-function ListingCard({ listing, isAdmin, onView, onEnquire, onEdit, onDelete }) {
-  const cover = getCover(listing);
-  const photoCount = Array.isArray(listing.images) ? listing.images.length : (cover ? 1 : 0);
-
-  return (
-    <motion.div layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.35 }}
-      whileHover={{ y: -7, boxShadow: "0 20px 50px rgba(0,0,0,0.12)" }}
-      className="bg-white overflow-hidden shadow-card group relative">
-
-      {isAdmin && (
-        <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
-            onClick={e => { e.stopPropagation(); onEdit(listing); }}
-            className="w-7 h-7 flex items-center justify-center text-white border-none cursor-pointer bg-secondary-600">
-            <Pencil size={12} />
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
-            onClick={e => { e.stopPropagation(); onDelete(listing); }}
-            className="w-7 h-7 flex items-center justify-center text-white border-none cursor-pointer bg-red-700">
-            <Trash2 size={12} />
-          </motion.button>
-        </div>
-      )}
-
-      {/* Featured star badge on grid cards too */}
-      {listing.featured && (
-        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 bg-amber-400">
-          <Star size={8} className="text-white fill-white" />
-          <span className="font-heading font-bold text-[8px] tracking-widest uppercase text-white">Featured</span>
-        </div>
-      )}
-
-      <div className="relative h-[200px] overflow-hidden cursor-pointer" onClick={() => onView(listing)}>
-        {cover ? (
-          <motion.img src={cover} alt={listing.name}
-            whileHover={{ scale: 1.06 }} transition={{ duration: 0.5 }}
-            className="w-full h-full object-cover block"
-            onError={e => { e.currentTarget.style.display = "none"; }} />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-primary-50">
-            <span className="font-heading font-bold text-[12px] text-primary-500">No Image</span>
-          </div>
-        )}
-        <span className="absolute top-3 left-3 text-white px-3 py-1 font-heading font-bold text-[10px] tracking-[0.1em] uppercase"
-          style={{ background: listing.type === "residential" ? "#9F4325" : "#0E1A2B", opacity: listing.featured ? 0 : 1 }}>
-          {listing.category || listing.type}
-        </span>
-        {photoCount > 1 && (
-          <span className="absolute top-3 right-3 bg-black/50 text-white font-heading font-bold text-[9px] px-2 py-0.5 tracking-wide">
-            +{photoCount - 1} photos
-          </span>
-        )}
-        {listing.status && listing.status !== "available" && (
-          <span className="absolute bottom-3 right-3 text-white px-2 py-0.5 font-heading font-bold text-[9px] tracking-widest uppercase bg-neutral-500">
-            {listing.status}
-          </span>
-        )}
-      </div>
-
-      <div className="p-5">
-        <div className="font-heading font-bold text-[15px] mb-0.5 text-secondary-600">{listing.name}</div>
-        <div className="font-body text-xs mb-1 text-neutral-500">📍 {listing.location}</div>
-        {listing.priceLabel && (
-          <div className="font-heading font-bold text-[14px] mb-3 text-primary-600">{listing.priceLabel}</div>
-        )}
-        {listing.features?.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap mb-4">
-            {listing.features.slice(0, 3).map((f, i) => (
-              <span key={i} className="font-body text-neutral-500 bg-neutral-100 text-[11px] px-2.5 py-1">✓ {f}</span>
-            ))}
-            {listing.features.length > 3 && (
-              <span className="font-body text-neutral-400 text-[11px] px-1 py-1">+{listing.features.length - 3}</span>
-            )}
-          </div>
-        )}
-        <div className="flex justify-between items-center pt-3.5 border-t border-neutral-200 gap-2 flex-wrap">
-          <div className="font-body text-[12px] text-neutral-500">
-            <strong className="font-heading text-[15px] text-primary-600">{listing.units}</strong>{" "}
-            {listing.units === 1 ? "Unit" : "Units"}
-          </div>
-          <div className="flex gap-3">
-            <motion.button whileHover={{ x: -2 }} onClick={() => onView(listing)}
-              className="bg-transparent border-none cursor-pointer font-heading font-bold text-[11px] tracking-[0.06em] uppercase flex items-center gap-1 text-secondary-600 hover:text-primary-600 transition-colors">
-              <ExternalLink size={11} /> Details
-            </motion.button>
-            <motion.button whileHover={{ x: 3 }} onClick={() => onEnquire(listing)}
-              className="bg-transparent border-none cursor-pointer font-heading font-bold text-[11px] tracking-[0.06em] uppercase text-primary-600 hover:text-primary-500 transition-colors">
-              Enquire →
-            </motion.button>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
 /* ═══════════════════════════════════════
    MAIN EXPORT
 ═══════════════════════════════════════ */
 export default function Properties() {
   const navigate = useNavigate();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
   const { listings, loading, deleteListing } = useListings();
 
-  const [filter,     setFilter]     = useState("all");
-  const [editFor,    setEditFor]    = useState(null);
-  const [showForm,   setShowForm]   = useState(false);
-  const [enquiryFor, setEnquiryFor] = useState(null);
-  const [deleteFor,  setDeleteFor]  = useState(null);
-  const [authNeeded, setAuthNeeded] = useState(false);
+  const [editFor,   setEditFor]   = useState(null);
+  const [showForm,  setShowForm]  = useState(false);
+  const [deleteFor, setDeleteFor] = useState(null);
 
   const featured = listings.filter(l => l.featured === true);
-  const filtered = filter === "all" ? listings : listings.filter(l => l.type === filter);
-  const preview  = filtered.slice(0, 6);
 
   const openNew   = () => { setEditFor(null); setShowForm(true); };
   const openEdit  = (l) => { setEditFor(l);   setShowForm(true); };
   const closeForm = () => { setShowForm(false); setEditFor(null); };
   const viewListing = (l) => navigate(`/properties/${l.id}`);
-  const handleEnquire = (l) => user ? setEnquiryFor(l) : setAuthNeeded(true);
 
   return (
     <>
       <section id="properties" className="py-20 px-[5%] bg-neutral-100">
         <div className="max-w-[1200px] mx-auto">
+
+          {/* ── Section header ── */}
+          <FadeUp>
+            <div className="flex items-end justify-between gap-4 mb-10 flex-wrap">
+              <div>
+                <SectionTag>Our Portfolio</SectionTag>
+                <h2 className="font-heading text-secondary-600 leading-[1.2]"
+                  style={{ fontSize: "clamp(2rem, 3vw, 2.8rem)", fontWeight: 400 }}>
+                  Available <em className="not-italic text-primary-600">Properties</em>
+                </h2>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                {isAdmin && (
+                  <motion.button whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}
+                    onClick={openNew}
+                    className="flex items-center gap-1.5 h-8 px-4 bg-primary-600 hover:bg-primary-500 text-white font-heading font-bold text-[10px] uppercase tracking-[0.1em] border-none cursor-pointer transition-colors">
+                    <Plus size={13} /> Add Listing
+                  </motion.button>
+                )}
+                <motion.button whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => navigate("/properties")}
+                  className="flex items-center gap-1.5 h-8 px-4 border border-neutral-300 bg-white text-secondary-600 hover:border-primary-600 hover:text-primary-600 font-heading font-bold text-[10px] uppercase tracking-[0.1em] cursor-pointer transition-colors">
+                  Browse All <ArrowRight size={11} />
+                </motion.button>
+              </div>
+            </div>
+          </FadeUp>
 
           {/* ── Featured spotlight ── */}
           {!loading && featured.length > 0 && (
@@ -368,22 +298,38 @@ export default function Properties() {
               all={listings}
               onView={viewListing}
               navigate={navigate}
+              isAdmin={isAdmin}
+              onEdit={openEdit}
+              onDelete={(l) => setDeleteFor(l)}
             />
           )}
 
-        
+          {/* ── Loading skeletons ── */}
+          {loading && (
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
+              <div className="bg-neutral-200 animate-pulse" style={{ minHeight: 400 }} />
+              <div className="flex flex-col gap-4">
+                {[1, 2].map(i => (
+                  <div key={i} className="h-[120px] bg-neutral-200 animate-pulse" />
+                ))}
+              </div>
+            </div>
+          )}
 
-          {/* CTA row */}
-          {/* <FadeUp delay={0.2}>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-12">
-              <motion.button
-                whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
-                onClick={() => navigate("/properties")}
-                className="inline-flex items-center gap-2 bg-secondary-600 hover:bg-secondary-500 text-white font-heading font-bold text-xs tracking-[0.08em] uppercase px-8 py-3.5 border-none cursor-pointer transition-colors duration-300">
-                <ArrowRight size={13} /> Browse All Properties
+          {/* ── Empty state (admin only) ── */}
+          {!loading && featured.length === 0 && isAdmin && (
+            <div className="text-center py-16 bg-white border border-neutral-200">
+              <p className="font-heading font-bold text-[13px] text-neutral-400 uppercase tracking-widest">
+                No featured listings yet
+              </p>
+              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                onClick={openNew}
+                className="mt-4 flex items-center gap-1.5 h-9 px-5 bg-primary-600 text-white font-heading font-bold text-[11px] uppercase border-none cursor-pointer mx-auto">
+                <Plus size={13} /> Add First Listing
               </motion.button>
             </div>
-          </FadeUp> */}
+          )}
+
         </div>
       </section>
 
@@ -394,14 +340,6 @@ export default function Properties() {
         )}
       </AnimatePresence>
 
-      {/* Enquiry modal */}
-      <AnimatePresence>
-        {enquiryFor && (
-          <EnquiryModal listing={enquiryFor} onClose={() => setEnquiryFor(null)}
-            onRequireAuth={() => { setEnquiryFor(null); setAuthNeeded(true); }} />
-        )}
-      </AnimatePresence>
-
       {/* Delete confirm */}
       <AnimatePresence>
         {deleteFor && (
@@ -409,9 +347,9 @@ export default function Properties() {
             onConfirm={async () => { await deleteListing(deleteFor.id); setDeleteFor(null); }}
             onCancel={() => setDeleteFor(null)} />
         )}
-      </AnimatePresence>
 
-      {authNeeded && <AuthTrigger onDone={() => setAuthNeeded(false)} />}
+        
+      </AnimatePresence>
     </>
   );
 }
