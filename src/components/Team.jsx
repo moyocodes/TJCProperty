@@ -440,13 +440,9 @@ export default function Team() {
   useEffect(() => {
     const unsub = onSnapshot(
       query(collection(db, "team"), orderBy("order")),
-      async (snap) => {
-        if (snap.empty) {
-          for (const m of SEED_TEAM) await addDoc(collection(db, "team"), m);
-        } else {
-          setTeam(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-          setLoading(false);
-        }
+      (snap) => {
+        setTeam(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setLoading(false);
       },
     );
     return unsub;
