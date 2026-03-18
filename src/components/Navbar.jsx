@@ -114,8 +114,8 @@ export default function Navbar() {
                 ? i === 0
                   ? { rotate: 45, y: 7 }
                   : i === 1
-                  ? { opacity: 0 }
-                  : { rotate: -45, y: -7 }
+                    ? { opacity: 0 }
+                    : { rotate: -45, y: -7 }
                 : { rotate: 0, y: 0, opacity: 1 }
             }
             className="block w-6 h-[2px] bg-white"
@@ -124,13 +124,14 @@ export default function Navbar() {
       </button>
 
       {/* Mobile menu */}
+      {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
             initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
-            className="absolute top-full left-0 right-0 bg-secondary-600/98 backdrop-blur-md flex flex-col px-[5%] py-6 gap-5 md:hidden"
+            className="absolute top-full left-0 right-0 bg-secondary-600/95 backdrop-blur-md flex flex-col px-[5%] py-6 gap-5 md:hidden"
           >
             {NAV_LINKS.map((id) => (
               <button
@@ -139,23 +140,43 @@ export default function Navbar() {
                   scrollToSection(id);
                   setMobileOpen(false);
                 }}
-                className="text-white/80 font-heading font-semibold text-sm uppercase text-left"
+                className="text-white/75 hover:text-primary-500 font-heading font-semibold text-sm uppercase text-left transition-colors"
               >
                 {id}
               </button>
             ))}
 
             {user && (
-              <button
-                onClick={() => {
-                  navigate("/dashboard");
-                  setMobileOpen(false);
-                }}
-                className="text-white font-heading font-semibold text-sm uppercase text-left"
-              >
-                Dashboard
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    navigate("/dashboard");
+                    setMobileOpen(false);
+                  }}
+                  className="flex items-center gap-2 text-white/80 hover:text-white font-heading font-bold text-sm uppercase transition-colors"
+                >
+                  <LayoutDashboard size={13} />
+                  Dashboard
+                </button>
+
+                <div className="flex items-center gap-2 text-white/70">
+                  <User size={12} />
+                  <span className="font-heading text-sm truncate">
+                    {user.displayName || user.email?.split("@")[0]}
+                  </span>
+                </div>
+              </>
             )}
+
+            <button
+              onClick={() => {
+                scrollToSection("contact");
+                setMobileOpen(false);
+              }}
+              className="bg-primary-600 hover:bg-primary-500 text-white font-heading font-bold text-[11px] tracking-[0.1em] uppercase px-5 py-2.5 text-center transition-colors"
+            >
+              Enquire Now
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
